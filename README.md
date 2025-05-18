@@ -72,7 +72,23 @@ To build the kernel:
 make
 ```
 
-This will generate `kernel.elf` and an ISO file `basickernel.iso`.
+This will generate `kernel.elf`. On Linux/macOS, it will also create an ISO file `basickernel.iso`.
+
+### Windows-Specific Instructions
+
+On Windows, the ISO creation is skipped by default since GRUB tools are primarily available on Linux. You have a few options:
+
+1. **Use WSL (Windows Subsystem for Linux)** to build the full ISO:
+   ```bash
+   wsl make iso
+   ```
+
+2. **Use a Linux VM** to build the ISO.
+
+3. **Run directly with QEMU** (without ISO):
+   ```
+   qemu-system-i386 -kernel kernel.elf
+   ```
 
 ## Testing with QEMU
 
@@ -82,11 +98,8 @@ To run the kernel in QEMU:
 make run
 ```
 
-or
-
-```
-qemu-system-i386 -cdrom basickernel.iso
-```
+On Linux/macOS, this will run with `qemu-system-i386 -cdrom basickernel.iso`.
+On Windows, this will run with `qemu-system-i386 -kernel kernel.elf`.
 
 ## Project Structure
 
