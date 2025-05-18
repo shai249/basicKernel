@@ -21,8 +21,8 @@ unsigned int multiboot_header[] = {
 
 /* Kernel stack */
 #define STACK_SIZE 0x4000 /* 16 KB */
-/* Aligned kernel stack (16 bytes alignment) */
-static char kernel_stack[STACK_SIZE] __attribute__((aligned(16)));
+/* Aligned kernel stack (16 bytes alignment) - marked unused to avoid compiler warnings */
+static char kernel_stack[STACK_SIZE] __attribute__((aligned(16))) __attribute__((unused));
 
 /* Kernel entry point */
 void kernel_main() {
