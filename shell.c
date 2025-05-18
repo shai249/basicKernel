@@ -5,6 +5,10 @@
 
 #include "kernel.h"
 
+/* Function declarations for string utilities used in this file */
+static int strcmp(const char* s1, const char* s2);
+static int strncmp(const char* s1, const char* s2, int n);
+
 #define COMMAND_BUFFER_SIZE 256
 #define SHELL_PROMPT "basicKernel> "
 
@@ -59,9 +63,16 @@ static int strcmp(const char* s1, const char* s2) {
     return *s1 - *s2;
 }
 
+/* 
+ * These functions are kept for potential future use but marked as unused
+ * to prevent compiler warnings with -Werror
+ */
+
+#ifdef __GNUC__
 /*
  * Copy a string
  */
+static char* strcpy(char* dest, const char* src) __attribute__((unused));
 static char* strcpy(char* dest, const char* src) {
     char* original = dest;
     while ((*dest++ = *src++));
@@ -71,6 +82,7 @@ static char* strcpy(char* dest, const char* src) {
 /*
  * Get the length of a string
  */
+static int strlen(const char* s) __attribute__((unused));
 static int strlen(const char* s) {
     int len = 0;
     while (*s++) {
@@ -78,6 +90,11 @@ static int strlen(const char* s) {
     }
     return len;
 }
+#else
+/* Non-GCC version */
+static char* strcpy(char* dest, const char* src);
+static int strlen(const char* s);
+#endif
 
 /*
  * Execute a shell command
