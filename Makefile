@@ -22,7 +22,13 @@ else
 	DETECTED_OS := $(shell uname -s)
 endif
 
+# Check if running in WSL
+ifneq ($(findstring microsoft,$(shell uname -r)),)
+	DETECTED_OS := WSL
+endif
+
 # Default target - on Windows, don't try to build ISO by default
+# On WSL or Linux, always try to build the ISO
 ifeq ($(DETECTED_OS),Windows)
 all: kernel.elf grub_note
 else
@@ -63,17 +69,86 @@ iso: kernel.elf
 	echo '  multiboot /boot/kernel.elf' >> iso/boot/grub/grub.cfg
 	echo '  boot' >> iso/boot/grub/grub.cfg
 	echo '}' >> iso/boot/grub/grub.cfg
-	@which grub-mkrescue >/dev/null 2>&1 || (echo "Error: grub-mkrescue not found. Please install GRUB2 tools." && exit 1)
-	grub-mkrescue -o basickernel.iso iso
+	@if ! which grub-mkrescue >/dev/null 2>&1; then \
+		echo "Error: grub-mkrescue not found. Installing required packages..."; \
+		if which apt-get >/dev/null 2>&1; then \
+			sudo apt-get update && \
+			sudo apt-get install -y grub-pc-bin grub-common xorriso; \
+		else \
+			echo "Please install the grub2-tools and xorriso packages manually."; \
+			exit 1; \
+		fi; \
+	fi
+	grub-mkrescue -o basickernel.iso iso || { \
+		echo "Failed to create ISO. Make sure you have all required packages:"; \
+		echo "  - grub-pc-bin"; \
+		echo "  - grub-common"; \
+		echo "  - xorriso"; \
+		exit 1; \
+	}
 
-# Run in QEMU - Windows version loads kernel directly
+# Find QEMU executable
+ifeq ($(DETECTED_OS),Windows)
+    # Try common QEMU installation paths on Windows
+    QEMU_PATHS = $(wildcard C:/Program*/qemu*/qemu-system-i386.exe) \
+                $(wildcard C:/qemu*/qemu-system-i386.exe) \
+                $(wildcard "C:/Program Files/qemu/qemu-system-i386.exe") \
+                $(wildcard "C:/Program Files (x86)/qemu/qemu-system-i386.exe")
+    
+    ifneq ($(QEMU_PATHS),)
+        # Use the first found QEMU path
+        QEMU = "$(firstword $(QEMU_PATHS))"
+    else
+        # Default if not found
+        QEMU = qemu-system-i386
+    endif
+else
+    QEMU = qemu-system-i386
+endif
+
+# Run in QEMU - different approach based on OS
 ifeq ($(DETECTED_OS),Windows)
 run: kernel.elf
 	@echo "Running kernel in QEMU (direct kernel load)..."
-	qemu-system-i386 -kernel kernel.elf
+	@echo "Using QEMU: $(QEMU)"
+	@if not exist $(QEMU) (echo "ERROR: QEMU not found at $(QEMU)" & \
+	 echo "Please install QEMU or set its path manually in the Makefile" & \
+	 echo "You can download QEMU from https://www.qemu.org/download/#windows" & \
+	 exit /b 1)
+	$(QEMU) -kernel kernel.elf
+else ifeq ($(DETECTED_OS),WSL)
+# WSL version - check for QEMU and use appropriate method
+run: kernel.elf
+	@echo "Running kernel in WSL with QEMU..."
+	@if ! command -v $(QEMU) >/dev/null 2>&1; then \
+		echo "Installing QEMU..."; \
+		sudo apt-get update && \
+		sudo apt-get install -y qemu-system-x86; \
+	fi
+	$(QEMU) -kernel kernel.elf
 else
-# Linux/macOS version uses ISO
-run: iso
-	@echo "Running kernel in QEMU (from ISO)..."
-	qemu-system-i386 -cdrom basickernel.iso
+# Linux/macOS version tries ISO first, falls back to direct if needed
+run: kernel.elf
+	@echo "Running kernel in QEMU..."
+	@if [ -f basickernel.iso ]; then \
+		echo "Using ISO image..."; \
+		$(QEMU) -cdrom basickernel.iso; \
+	else \
+		echo "ISO not found, running kernel directly..."; \
+		$(QEMU) -kernel kernel.elf; \
+	fi
+endif
+
+# Alternative run target for Windows
+ifeq ($(DETECTED_OS),Windows)
+qemu-run: kernel.elf
+	@echo "Please enter the full path to qemu-system-i386.exe:"
+	@set /p QEMU_PATH=
+	@echo "Running kernel using specified QEMU path..."
+	@"!QEMU_PATH!" -kernel kernel.elf
+else
+# Alternative Linux/WSL target for direct kernel load
+qemu-run: kernel.elf
+	@echo "Running kernel directly (without ISO)..."
+	$(QEMU) -kernel kernel.elf
 endif

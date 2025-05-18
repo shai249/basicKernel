@@ -78,19 +78,50 @@ This will generate `kernel.elf`. On Linux/macOS, it will also create an ISO file
 
 On Windows, the ISO creation is skipped by default since GRUB tools are primarily available on Linux. You have a few options:
 
-1. **Use WSL (Windows Subsystem for Linux)** to build the full ISO:
-   ```bash
-   wsl make iso
+1. **Run directly with QEMU** (without ISO):
    ```
-
-2. **Use a Linux VM** to build the ISO.
-
-3. **Run directly with QEMU** (without ISO):
+   run-qemu.bat
+   ```
+   or
    ```
    qemu-system-i386 -kernel kernel.elf
    ```
 
+### WSL-Specific Instructions
+
+If you're using Windows Subsystem for Linux (WSL), you have full access to Linux tools, making it easier to build and test the kernel:
+
+1. **Navigate to the project directory**:
+   ```bash
+   cd /mnt/c/Users/shaig/Desktop/Projects/basicKernel
+   ```
+
+2. **Build and run the kernel**:
+   ```bash
+   chmod +x run-qemu.sh
+   ./run-qemu.sh
+   ```
+
+3. **Or use make commands directly**:
+   ```bash
+   make        # Build the kernel and ISO
+   make run    # Run the kernel in QEMU
+   ```
+
+The WSL environment will automatically install any missing dependencies (QEMU, GRUB tools, etc.) when needed.
+
 ## Testing with QEMU
+
+### Setting up QEMU on Windows
+
+1. Download QEMU from the [official website](https://www.qemu.org/download/#windows)
+   - For Windows, you can use the installer from [QEMU-Windows](https://qemu.weilnetz.de/w64/)
+   
+2. During installation:
+   - Make sure to select the option to add QEMU to your PATH
+   - Install the i386 system emulation
+
+### Running the Kernel
 
 To run the kernel in QEMU:
 
@@ -100,6 +131,14 @@ make run
 
 On Linux/macOS, this will run with `qemu-system-i386 -cdrom basickernel.iso`.
 On Windows, this will run with `qemu-system-i386 -kernel kernel.elf`.
+
+If QEMU is installed but not in your PATH, you can use:
+
+```
+make qemu-run
+```
+
+This will prompt you to enter the full path to qemu-system-i386.exe (e.g., `C:\Program Files\qemu\qemu-system-i386.exe`).
 
 ## Project Structure
 
