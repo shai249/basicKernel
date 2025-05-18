@@ -17,8 +17,9 @@ if [ ! -f "kernel.elf" ]; then
 fi
 
 # Check if QEMU is installed
-if ! command -v qemu-system-i386 &> /dev/null; then
-    echo "Error: qemu-system-i386 not found. Installing required packages..."
+QEMU_PATH=$(command -v qemu-system-i386 2>/dev/null)
+if [ -z "$QEMU_PATH" ]; then
+    echo "qemu-system-i386 not found. Installing required packages..."
     
     # Try to detect the Linux distribution and install packages
     if command -v apt-get &> /dev/null; then
@@ -37,16 +38,29 @@ if ! command -v qemu-system-i386 &> /dev/null; then
     fi
     
     # Check again if QEMU was installed
-    if ! command -v qemu-system-i386 &> /dev/null; then
+    QEMU_PATH=$(command -v qemu-system-i386 2>/dev/null)
+    if [ -z "$QEMU_PATH" ]; then
         echo "Error: Failed to install qemu-system-i386."
         exit 1
     fi
+else
+    echo "Found QEMU at: $QEMU_PATH"
 fi
 
 # Run kernel directly if ISO doesn't exist or if requested
 if [ ! -f "basickernel.iso" ] || [ "$1" == "--direct" ]; then
     echo "Running kernel directly with QEMU..."
-    qemu-system-i386 -kernel kernel.elf
+    # Try these QEMU parameters in order until one works
+    if ! "$QEMU_PATH" -kernel kernel.elf -display gtk,gl=off 2>/dev/null; then
+        echo "First attempt failed, trying without display options..."
+        if ! "$QEMU_PATH" -kernel kernel.elf 2>/dev/null; then
+            echo "Error running QEMU. Trying with no graphics..."
+            "$QEMU_PATH" -kernel kernel.elf -nographic || {
+                echo "All QEMU attempts failed. Please check your QEMU installation."
+                exit 1
+            }
+        fi
+    fi
 else
     # Create ISO if it doesn't exist
     if [ ! -f "basickernel.iso" ]; then
@@ -55,13 +69,23 @@ else
         
         if [ $? -ne 0 ]; then
             echo "Error: Failed to create ISO. Running kernel directly instead."
-            qemu-system-i386 -kernel kernel.elf
+            "$QEMU_PATH" -kernel kernel.elf -display gtk,gl=off || "$QEMU_PATH" -kernel kernel.elf || "$QEMU_PATH" -kernel kernel.elf -nographic
             exit 0
         fi
     fi
     
     echo "Running kernel from ISO with QEMU..."
-    qemu-system-i386 -cdrom basickernel.iso
+    # Try these QEMU parameters in order until one works
+    if ! "$QEMU_PATH" -cdrom basickernel.iso -display gtk,gl=off 2>/dev/null; then
+        echo "First attempt failed, trying without display options..."
+        if ! "$QEMU_PATH" -cdrom basickernel.iso 2>/dev/null; then
+            echo "Error running QEMU. Trying with no graphics..."
+            "$QEMU_PATH" -cdrom basickernel.iso -nographic || {
+                echo "All QEMU attempts failed. Please check your QEMU installation."
+                exit 1
+            }
+        fi
+    fi
 fi
 
 exit 0

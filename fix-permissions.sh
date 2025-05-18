@@ -1,2 +1,4 @@
-'#!/bin/sh' 
-'chmod +x run-qemu.sh' 
+#!/bin/sh
+# Fix permissions for shell scripts
+chmod +x run-qemu.sh
+echo "Permissions fixed for run-qemu.sh"
